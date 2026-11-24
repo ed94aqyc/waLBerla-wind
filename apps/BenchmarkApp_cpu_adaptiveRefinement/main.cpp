@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iomanip>
 #include <limits>
 #include <vector>
 
@@ -466,6 +467,7 @@ namespace turbine_core {
             return numBlocks;
         };
         const uint_t cellsPerBlock = blocks->getNumberOfXCellsPerBlock() * blocks->getNumberOfYCellsPerBlock() * blocks->getNumberOfZCellsPerBlock();
+        const uint_t uniformFinestCells = blocks->getNumberOfXCells(finestLevel) * blocks->getNumberOfYCells(finestLevel) * blocks->getNumberOfZCells(finestLevel);
 
         auto logBlockStructure = [&]() {
             const auto numBlocks = blocksPerLevel();
@@ -474,6 +476,22 @@ namespace turbine_core {
                 ss << " | L" << level << ": " << numBlocks[level];
             }
             WALBERLA_LOG_INFO_ON_ROOT("Blocks per level at time step " << timeloop.getCurrentTimeStep() << ss.str())
+
+            // cells per level, and cell updates per (coarse) time step: a block on level L is updated 2^L times
+            uint_t numCells{0};
+            uint_t numCellUpdates{0};
+            std::stringstream cs;
+            for( uint_t level = 0; level <= finestLevel; ++level ) {
+                const uint_t cellsOnLevel = numBlocks[level] * cellsPerBlock;
+                numCells += cellsOnLevel;
+                numCellUpdates += cellsOnLevel * (uint_t(1) << level);
+                cs << " | L" << level << ": " << cellsOnLevel;
+            }
+            WALBERLA_LOG_INFO_ON_ROOT("Cells per level at time step " << timeloop.getCurrentTimeStep() << cs.str()
+                                      << " | total: " << numCells << " (" << std::setprecision(3)
+                                      << 100.0 * double(numCells) / double(uniformFinestCells) << " % of the "
+                                      << uniformFinestCells << " cells of a uniform finest-level domain)"
+                                      << " | cell updates per time step: " << numCellUpdates)
         };
 
         auto logGradientStatistics = [&]() {
@@ -609,6 +627,9 @@ namespace turbine_core {
 
         WALBERLA_LOG_INFO_ON_ROOT("Adaptive forest: " << cellUpdates * 1e-6 / time << " MLUPS (cell updates of the actual forest in every time step, "
                                   << "including time spent in refreshes)")
+        WALBERLA_LOG_INFO_ON_ROOT("Cell updates: " << uint64_t(cellUpdates) << " in total, " << uint64_t(cellUpdates / double(timesteps))
+                                  << " per time step on average (a uniform finest-level domain needs "
+                                  << uniformFinestCells * (uint_t(1) << finestLevel) << " per time step)")
 
         logging::WindTurbineApplicationLogger<domain::DomainSetup, domain::BoundarySetup, codegen::KernelInfo, TimingPolicy_T> logger {
             domainSetup, boundarySetup, windFarmConfig, &timing, performance.loggingString(timesteps, time)

@@ -1,0 +1,106 @@
+// ADAPTIVE refinement case: blocks are refined at run time where the wake develops. See also static.prm and
+// uniform.prm (same domain, turbine and parameters).
+//
+// Minimal adaptive mesh refinement benchmark on GPUs (one GPU per MPI process): one actuator line turbine (MEXICO
+// rotor, D = 15 cells on the finest level) in a fully periodic box with uniform initial flow, one refinement level.
+// 8 x 3 x 3 root blocks; the turbine sits in the middle root block in y and z.
+// Runs about 5 minutes on one GTX 980 Ti.
+// Same case as BenchmarkApp_cpu_adaptiveRefinement/adaptive.prm.
+
+DomainSetup
+{
+    // in cells of the finest level. Root blocks have cellsPerBlock * 2^numLevels = 32 x 40 x 40 cells, i.e. 8 x 3 x 3
+    // root blocks. The wider blocks in y and z keep the wake within the middle row of root blocks.
+    domainSize    < 256, 120, 120 >;
+    cellsPerBlock < 16, 20, 20 >;   // cells per block on every level (even numbers)
+
+    Refinement {
+        // Finest level. The turbine region always stays on this level, and the depth of the forest is fixed.
+        numLevels       1;
+        BoundaryLayer   0;
+
+        // Every 'refinementFrequency' time steps, blocks outside the turbine region are refined where the velocity
+        // gradient measure (central velocity difference per cell, LU) exceeds 'upperLimit' and coarsened where it is
+        // below 'lowerLimit'. Choose lowerLimit < upperLimit / 2. Set refinementFrequency to 0 to disable.
+        Adaptive {
+            refinementFrequency 100;
+            lowerLimit          5e-4;
+            upperLimit          2e-3;
+        }
+    }
+}
+
+Parameters
+{
+    timesteps          2001;   // a few minutes; one flow-through of the domain takes about 4400 time steps
+    remainingTimeLoggerFrequency 10; // in seconds
+
+    length_SI          4.5;
+    length_LU          15;
+
+    velocity_SI        10.05;
+    velocity_LU        0.05773502691896259;
+
+    viscosity_SI       1.82e-05;
+    density_SI         1.197;
+
+    driverType         None;   // only resets the force field
+
+    gpuEnabledMPI      false;  // CUDA-aware MPI for the PDF communication
+}
+
+Initialisation {
+    initialVelocity <0.05773502691896259, 0, 0>;
+}
+
+Boundaries
+{
+    setup                   Periodic;
+    inflowType              Periodic;
+    outflowType             Periodic;
+    wallType                NoSlip;   // unused in the periodic setup
+
+    inflowVelocity          <0.05773502691896259, 0, 0>;
+    outflowPressure         1.0;
+}
+
+WindFarm{
+
+    Turbine1
+    {
+        // turbine AABB [40.5, 55.5] x [52.5, 67.5] x [53.2, 68.2] inside the root block [32, 64] x [40, 80]^2
+        basePoint             <48, 60, 60>;
+        diameter_LU           15;
+        hubRotationalVelocity <0,0,44.5163679>;
+        towerDescription      Mexico.tower;
+        bladeDescription      Mexico.blade;
+        towerEffect     0;
+        nacelleEffect   0;
+        tipLoss         1;
+        nPointsBlades   50;
+        nPointsTower    2;
+        nBlades         3;
+        nacelleYaw      0;
+        hubRadius_SI    0.21;
+        hubDeport_SI    0.0;
+        hubTilt         0.0;
+        bladePitch      -2.3000244769936637;
+        bladePrecone    0.0;
+        aeroModel       actuatorLine;
+    }
+}
+
+StabilityChecker
+{
+    checkFrequency 100;
+    streamOutput   false;
+    vtkOutput      false;
+}
+
+Output
+{
+    VTK {
+        writeFrequency  100;      // velocity field and domain decomposition; set to 0 for performance measurements
+        baseFolder      vtk_out;
+    }
+}

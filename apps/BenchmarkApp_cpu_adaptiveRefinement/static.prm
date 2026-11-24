@@ -1,30 +1,38 @@
-// Minimal adaptive mesh refinement benchmark: one actuator line turbine (MEXICO rotor, D = 15 cells on the finest
-// level) in a fully periodic box with uniform initial flow, one refinement level. Runs a few minutes on 4 cores.
+// STATIC refinement case: the middle row of root blocks in y and z (the turbine and its wake region) is on the
+// finest level for the whole run, the rest stays coarse (64 + 64 blocks). No adaptive refinement.
+// Same domain, turbine and parameters as adaptive.prm.
+//
+// Minimal refinement benchmark: one actuator line turbine (MEXICO rotor, D = 15 cells on the finest
+// level) in a fully periodic box with uniform initial flow, one refinement level. 8 x 3 x 3 root blocks; the turbine
+// sits in the middle root block in y and z.
+// Runs about 8 minutes on 4 cores (without VTK output).
 
 DomainSetup
 {
-    domainSize    < 256, 64, 64 >;  // in cells of the finest level
-    cellsPerBlock < 16, 16, 16 >;   // cells per block on every level (even numbers)
+    // in cells of the finest level. Root blocks have cellsPerBlock * 2^numLevels = 32 x 40 x 40 cells, i.e. 8 x 3 x 3
+    // root blocks. The wider blocks in y and z keep the wake within the middle row of root blocks.
+    domainSize    < 256, 120, 120 >;
+    cellsPerBlock < 16, 20, 20 >;   // cells per block on every level (even numbers)
 
     Refinement {
         // Finest level. The turbine region always stays on this level, and the depth of the forest is fixed.
         numLevels       1;
         BoundaryLayer   0;
 
-        // Every 'refinementFrequency' time steps, blocks outside the turbine region are refined where the velocity
-        // gradient measure (central velocity difference per cell, LU) exceeds 'upperLimit' and coarsened where it is
-        // below 'lowerLimit'. Choose lowerLimit < upperLimit / 2. Set refinementFrequency to 0 to disable.
-        Adaptive {
-            refinementFrequency 100;
-            lowerLimit          5e-4;
-            upperLimit          2e-3;
+        // Static refinement of the middle row of root blocks (x: whole domain, y and z: root block [40, 80]). The box
+        // is one cell smaller than the root blocks, so that the neighbouring rows are not touched. No adaptive
+        // refinement (no 'Adaptive' block).
+        AABB {
+            global {
+                MiddleRow { min <0, 41, 41>; max <256, 79, 79>; level 1; }
+            }
         }
     }
 }
 
 Parameters
 {
-    timesteps          5001;
+    timesteps          2001;   // a few minutes; one flow-through of the domain takes about 4400 time steps
     remainingTimeLoggerFrequency 10; // in seconds
 
     length_SI          4.5;
@@ -58,7 +66,8 @@ WindFarm{
 
     Turbine1
     {
-        basePoint             <48, 32, 32>;
+        // turbine AABB [40.5, 55.5] x [52.5, 67.5] x [53.2, 68.2] inside the root block [32, 64] x [40, 80]^2
+        basePoint             <48, 60, 60>;
         diameter_LU           15;
         hubRotationalVelocity <0,0,44.5163679>;
         towerDescription      Mexico.tower;

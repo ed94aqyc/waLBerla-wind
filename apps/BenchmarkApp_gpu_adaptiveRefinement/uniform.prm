@@ -1,31 +1,38 @@
-// Minimal adaptive mesh refinement benchmark on GPUs (one GPU per MPI process): one actuator line turbine (MEXICO
+// UNIFORM case: the whole domain is on the finest level (576 blocks). The forest still has two levels (level 0
+// is empty), so time steps, omega and the turbine are the same as in the adaptive and static cases. No adaptive
+// refinement.
+// Same domain, turbine and parameters as adaptive.prm.
+//
+// Minimal refinement benchmark on GPUs (one GPU per MPI process): one actuator line turbine (MEXICO
 // rotor, D = 15 cells on the finest level) in a fully periodic box with uniform initial flow, one refinement level.
-// Same case as BenchmarkApp_cpu_adaptiveRefinement/input.prm.
+// 8 x 3 x 3 root blocks; the turbine sits in the middle root block in y and z.
+// Runs about 25 minutes on one GTX 980 Ti (without VTK output).
+// Same case as BenchmarkApp_cpu_adaptiveRefinement/uniform.prm.
 
 DomainSetup
 {
-    domainSize    < 256, 64, 64 >;  // in cells of the finest level
-    cellsPerBlock < 16, 16, 16 >;   // cells per block on every level (even numbers)
+    // in cells of the finest level. Root blocks have cellsPerBlock * 2^numLevels = 32 x 40 x 40 cells, i.e. 8 x 3 x 3
+    // root blocks. The wider blocks in y and z keep the wake within the middle row of root blocks.
+    domainSize    < 256, 120, 120 >;
+    cellsPerBlock < 16, 20, 20 >;   // cells per block on every level (even numbers)
 
     Refinement {
-        // Finest level. The turbine region always stays on this level, and the depth of the forest is fixed.
+        // Finest level, on which the whole domain is.
         numLevels       1;
         BoundaryLayer   0;
 
-        // Every 'refinementFrequency' time steps, blocks outside the turbine region are refined where the velocity
-        // gradient measure (central velocity difference per cell, LU) exceeds 'upperLimit' and coarsened where it is
-        // below 'lowerLimit'. Choose lowerLimit < upperLimit / 2. Set refinementFrequency to 0 to disable.
-        Adaptive {
-            refinementFrequency 100;
-            lowerLimit          5e-4;
-            upperLimit          2e-3;
+        // The whole domain on the finest level. No adaptive refinement (no 'Adaptive' block).
+        AABB {
+            global {
+                Domain { min <0, 0, 0>; max <256, 120, 120>; level 1; }
+            }
         }
     }
 }
 
 Parameters
 {
-    timesteps          5001;
+    timesteps          2001;   // a few minutes; one flow-through of the domain takes about 4400 time steps
     remainingTimeLoggerFrequency 10; // in seconds
 
     length_SI          4.5;
@@ -61,7 +68,8 @@ WindFarm{
 
     Turbine1
     {
-        basePoint             <48, 32, 32>;
+        // turbine AABB [40.5, 55.5] x [52.5, 67.5] x [53.2, 68.2] inside the root block [32, 64] x [40, 80]^2
+        basePoint             <48, 60, 60>;
         diameter_LU           15;
         hubRotationalVelocity <0,0,44.5163679>;
         towerDescription      Mexico.tower;
@@ -92,7 +100,8 @@ StabilityChecker
 Output
 {
     VTK {
-        writeFrequency  100;      // velocity field and domain decomposition; set to 0 for performance measurements
+        writeFrequency  100;      // velocity field and domain decomposition (about 300 MB per output in this case);
+                                  // set to 0 for performance measurements
         baseFolder      vtk_out;
     }
 }
