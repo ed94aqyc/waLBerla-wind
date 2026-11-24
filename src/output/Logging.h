@@ -247,7 +247,7 @@ namespace turbine_core {
                 oss_ << "WIND FARM INFORMATION:\n";
                 oss_ << "\n    - Number of Turbines:                  " << std::to_string(numTurbines);
 
-                for (auto & tc : turbineBlocks) {
+                for (const walberla::Config::BlockHandle & tc : turbineBlocks) {
 
                     oss_ << "\n    - " << tc.getKey() << ":";
 

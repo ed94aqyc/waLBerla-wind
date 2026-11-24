@@ -329,7 +329,7 @@ namespace turbine_core {
                 if( !lineOutputBlocks.empty() )  {
                     lineOutput_ = std::make_shared<LineOutput_T>( config, forest_, timeloop_, fields_ );
                 }
-                for (auto & block : lineOutputBlocks) {
+                for (const walberla::Config::BlockHandle & block : lineOutputBlocks) {
                     const uint_t frequency = block.getParameter<uint_t>("outputFrequency");
                     if (frequency != 0)
                         writeLineOutput_ = true;
@@ -433,7 +433,7 @@ namespace turbine_core {
                 std::vector<walberla::Config::BlockHandle> AABBFilterBlocks;
                 inclusionBlock.getBlocks("AABB", AABBFilterBlocks);
 
-                for (const auto & filter : AABBFilterBlocks) {
+                for (const walberla::Config::BlockHandle & filter : AABBFilterBlocks) {
 
                     const Vector_T min = filter.getParameter<Vector_T>("min");
                     const Vector_T max = filter.getParameter<Vector_T>("max");
@@ -449,7 +449,7 @@ namespace turbine_core {
                 std::vector<walberla::Config::BlockHandle> planeFilterBlocks;
                 inclusionBlock.getBlocks("Plane", planeFilterBlocks);
 
-                for( const auto & filter : planeFilterBlocks ) {
+                for( const walberla::Config::BlockHandle & filter : planeFilterBlocks ) {
 
                     const Vector_T point  = filter.getParameter<Vector_T>("point");
                     const Vector_T normal = filter.getParameter<Vector_T>("normal");

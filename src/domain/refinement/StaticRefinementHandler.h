@@ -78,7 +78,7 @@ namespace turbine_core {
                         std::vector<walberla::Config::BlockHandle> blocks{};
                         aabbConfig.getOneBlock("turbine").getBlocks(blocks);
 
-                        for (const auto & block : blocks) {
+                        for (const walberla::Config::BlockHandle & block : blocks) {
 
                             const walberla::Vector3<real_t> min = block.getParameter<walberla::Vector3<real_t>>("min");
                             const walberla::Vector3<real_t> max = block.getParameter<walberla::Vector3<real_t>>("max");
@@ -99,7 +99,7 @@ namespace turbine_core {
                         std::vector<walberla::Config::BlockHandle> blocks{};
                         aabbConfig.getOneBlock("global").getBlocks(blocks);
 
-                        for (const auto & block : blocks) {
+                        for (const walberla::Config::BlockHandle & block : blocks) {
 
                             const walberla::Vector3<real_t> min = block.getParameter<walberla::Vector3<real_t>>("min");
                             const walberla::Vector3<real_t> max = block.getParameter<walberla::Vector3<real_t>>("max");
