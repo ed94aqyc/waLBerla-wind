@@ -54,21 +54,21 @@ The GPU version is [`BenchmarkApp_gpu_adaptiveRefinement`](../BenchmarkApp_gpu_a
 
 ### Large cases
 
-`adaptive_large.prm`, `static_large.prm` and `uniform_large.prm` are the same three cases at 3.75 times the
-resolution in every direction, with the same root blocks and the same physical time. They are identical to the GPU
-files of the same name, except for `gpuEnabledMPI` and the stability check frequency. The
+`adaptive_large.prm`, `static_large.prm` and `uniform_large.prm` are the same three cases at 3 times the resolution
+in every direction, with the same root blocks and the same physical time (6001 time steps). They are identical to the
+GPU files of the same name, except for `gpuEnabledMPI` and the stability check frequency. The
 [GPU README](../BenchmarkApp_gpu_adaptiveRefinement/README.md#large-cases-for-modern-gpus) lists the scaled
-parameters.
+parameters and when the wake reaches the end of the domain.
 
 | File | Cells | Cell updates per time step | Memory | Time, 4 cores of this machine |
 |---|---|---|---|---|
-| `uniform_large.prm` | 199.6 M | 399.2 M | about 59 GB | about 140 h |
-| `static_large.prm` | 44.4 M | 66.5 M | about 13 GB (measured) | about 23 h |
-| `adaptive_large.prm` | 27.4 M at the start, growing with the wake | 30.2 M at the start | 8.1 GB at the start | |
+| `uniform_large.prm` | 99.5 M | 199.1 M | about 38 GB | about 55 to 85 h |
+| `static_large.prm` | 22.1 M | 33.2 M | about 8.4 GB (measured) | about 9 to 14 h |
+| `adaptive_large.prm` | 13.7 M at the start, growing with the wake | 15.0 M at the start | 5.1 GB at the start (measured) | |
 
-* The app needs about 300 bytes per cell.
-* The times are extrapolated from 6 MLUPS (3 time steps of the static case on 4 cores) to 7501 time steps. Run
-  these cases on a cluster.
+* The app needs about 380 bytes per cell.
+* The times are extrapolated from 4 to 6 MLUPS (3 time steps on 4 cores) to 6001 time steps. Run these cases on a
+  cluster.
 * The forest is not rebalanced after a refresh, so new fine blocks stay on the process of their parent. Use at most
   one process per block: 79 blocks at the start of the adaptive case, 128 in the static case and 576 in the uniform
   case.

@@ -1,23 +1,19 @@
-// ADAPTIVE refinement case, LARGE version: adaptive.prm at about 3.75 times the resolution in every
-// direction (D = 56.25 cells on the finest level), with the same 8 x 3 x 3 root blocks and the same physical time.
-// Blocks have 60 x 76 x 76 = 346,560 cells (54 times the small case). See also static_large.prm and uniform_large.prm.
+// ADAPTIVE refinement case, LARGE version: adaptive.prm at 3 times the resolution in every direction
+// (D = 45 cells on the finest level), with the same 8 x 3 x 3 root blocks and the same physical time. Blocks have
+// 48 x 60 x 60 = 172,800 cells (27 times the small case). See also static_large.prm and uniform_large.prm.
 //
 // Minimal refinement benchmark: one actuator line turbine (MEXICO rotor) in a fully periodic box with uniform initial
 // flow, one refinement level. Same case as BenchmarkApp_gpu_adaptiveRefinement/adaptive_large.prm.
-// Cells: 27.4 M at the start (8 of 79 blocks on the finest level), growing with the wake.
-// Memory: about 300 bytes per cell, i.e. 8.1 GB at the start and at most the 59 GB of uniform_large.prm.
-// Needs a cluster: this machine reaches about 6 MLUPS on 4 cores.
+// Cells: 13.7 M at the start (8 of 79 blocks on the finest level), growing with the wake.
+// Memory: about 380 bytes per cell, i.e. 5.1 GB at the start (measured) and at most the 38 GB of
+// uniform_large.prm.
 
 DomainSetup
 {
-    // in cells of the finest level. Root blocks have cellsPerBlock * 2^numLevels = 120 x 152 x 152 cells, i.e. the
-    // 8 x 3 x 3 root blocks of the small case at 3.75 times the resolution.
-    // x: 60 cells as in the GPU version, where 60 + 4 ghost cells make a row of a GPU field exactly 256 bytes, so the
-    // GPU fields are not padded. y, z: 76 instead of 75 cells, because the cells per block must be even (a child
-    // block covers half of its parent). The domain is therefore 1.3 % wider in y and z than in the small case
-    // (8.1 D instead of 8 D).
-    domainSize    < 960, 456, 456 >;
-    cellsPerBlock < 60, 76, 76 >;   // cells per block on every level (even numbers)
+    // in cells of the finest level. Root blocks have cellsPerBlock * 2^numLevels = 96 x 120 x 120 cells, i.e. the
+    // 8 x 3 x 3 root blocks of the small case at 3 times the resolution.
+    domainSize    < 768, 360, 360 >;
+    cellsPerBlock < 48, 60, 60 >;   // cells per block on every level (even numbers)
 
     Refinement {
         // Finest level. The turbine region always stays on this level, and the depth of the forest is fixed.
@@ -28,23 +24,24 @@ DomainSetup
         // gradient measure (central velocity difference per cell, LU) exceeds 'upperLimit' and coarsened where it is
         // below 'lowerLimit'. Choose lowerLimit < upperLimit / 2. Set refinementFrequency to 0 to disable.
         Adaptive {
-            // frequency x 3.75 (same physical time), limits / 3.75 (the velocity difference per cell scales with
-            // the cell size)
-            refinementFrequency 375;
-            lowerLimit          1.3333e-4;
-            upperLimit          5.3333e-4;
+            // frequency x 3 (same physical time), limits / 3 (the velocity difference per cell scales with the
+            // cell size)
+            refinementFrequency 300;
+            lowerLimit          1.6667e-4;
+            upperLimit          6.6667e-4;
         }
     }
 }
 
 Parameters
 {
-    timesteps          7501;   // same physical time as the 2001 steps of the small case; one flow-through of the
-                               // domain takes about 16600 time steps
+    timesteps          6001;   // same physical time as the 2001 steps of the small case; one flow-through of the
+                               // domain takes about 13300 time steps, the wake reaches x = 768 after at least
+                               // 10800 time steps
     remainingTimeLoggerFrequency 10; // in seconds
 
     length_SI          4.5;
-    length_LU          56.25;   // 3.75 x 15
+    length_LU          45;   // 3 x 15
 
     velocity_SI        10.05;
     velocity_LU        0.05773502691896259;
@@ -74,9 +71,9 @@ WindFarm{
 
     Turbine1
     {
-        // turbine AABB about [152, 208] x [200, 256] x [203, 259] inside the root block [120, 240] x [152, 304]^2
-        basePoint             <180, 228, 228>;
-        diameter_LU           56.25;
+        // turbine AABB [121.5, 166.5] x [157.5, 202.5] x [159.6, 204.6] inside the root block [96, 192] x [120, 240]^2
+        basePoint             <144, 180, 180>;
+        diameter_LU           45;
         hubRotationalVelocity <0,0,44.5163679>;
         towerDescription      Mexico.tower;
         bladeDescription      Mexico.blade;
@@ -98,7 +95,7 @@ WindFarm{
 
 StabilityChecker
 {
-    checkFrequency 375;
+    checkFrequency 300;
     streamOutput   false;
     vtkOutput      false;
 }
@@ -106,7 +103,7 @@ StabilityChecker
 Output
 {
     VTK {
-        writeFrequency  0;        // velocity field and domain decomposition, e.g. 375 (up to about 16 GB per output)
+        writeFrequency  0;        // velocity field and domain decomposition, e.g. 300 (up to about 8 GB per output)
         baseFolder      vtk_out;
     }
 }

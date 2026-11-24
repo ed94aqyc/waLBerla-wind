@@ -31,40 +31,44 @@ mpirun -np 2 sh -c 'CUDA_VISIBLE_DEVICES=$OMPI_COMM_WORLD_LOCAL_RANK exec ./Benc
 
 ## Large cases for modern GPUs
 
-`adaptive_large.prm`, `static_large.prm` and `uniform_large.prm` are the same three cases at 3.75 times the
-resolution in every direction. They keep the same 8 x 3 x 3 root blocks, the same block structure and the same
-physical time.
+`adaptive_large.prm`, `static_large.prm` and `uniform_large.prm` are the same three cases at 3 times the resolution
+in every direction. They keep the same 8 x 3 x 3 root blocks, the same block structure and the same physical time.
 
 | Case | Cells | Cell updates per time step | GPU memory | Pinned host memory |
 |---|---|---|---|---|
-| `uniform_large.prm` | 199.6 M | 399.2 M | about 58 GB | about 32 GB |
-| `static_large.prm` | 44.4 M | 66.5 M | about 12.8 GB | about 7.1 GB |
-| `adaptive_large.prm` | 27.4 M at the start, growing with the wake | 30.2 M at the start | 7.9 GB at the start | 4.4 GB at the start |
+| `uniform_large.prm` | 99.5 M | 199.1 M | about 39 GB | about 17 GB |
+| `static_large.prm` | 22.1 M | 33.2 M | about 8.7 GB | about 3.7 GB |
+| `adaptive_large.prm` | 13.7 M at the start, growing with the wake | 15.0 M at the start | 5.5 GB at the start (measured) | 2.3 GB at the start |
 
 * **Scaled parameters.**
-  * Grid: `cellsPerBlock <60,76,76>`, `domainSize <960,456,456>`.
-  * Turbine: `basePoint <180,228,228>`, `diameter_LU` and `length_LU` of 56.25 (D = 56.25 cells on the finest
-    level).
-  * Time: time steps, refinement frequency and stability check frequency x 3.75 (7501 time steps, refinement every
-    375 steps).
-  * Refinement limits / 3.75, because the velocity difference per cell scales with the cell size.
+  * Grid: `cellsPerBlock <48,60,60>` (172,800 cells, 27 times the small case), `domainSize <768,360,360>`.
+  * Turbine: `basePoint <144,180,180>`, `diameter_LU` and `length_LU` of 45 (D = 45 cells on the finest level).
+  * Time: time steps, refinement frequency and stability check frequency x 3 (6001 time steps, refinement every 300
+    steps).
+  * Refinement limits / 3, because the velocity difference per cell scales with the cell size.
   * SI parameters and LU velocity are unchanged.
-* **Block size.**
-  * In x, 60 cells plus 4 ghost cells make a GPU field row exactly 256 bytes, the pitch alignment of waLBerla's GPU
-    fields, so the fields are not padded. In the small case the padding makes every row 4 times wider; the small
-    uniform case needs 5.4 GB.
-  * In y and z, the blocks have 76 cells, not 75, because the cells per block must be even. The domain is therefore
-    1.3 % wider in y and z (8.1 D instead of 8 D).
-* **Memory.** About 290 bytes per cell on the GPU (single precision), plus 160 bytes per cell of pinned host memory
-  for the CPU mirrors. The uniform case needs an 80 GB GPU, or several GPUs with one MPI process each.
-* **Output.** VTK output is off (`writeFrequency 0`); one output of the uniform case would be about 16 GB. Every
-  stability check (every 1500 steps) copies all PDFs to the host, up to 25 GB.
+* **Wake.**
+  * The wake reaches the end of the domain (x = 768, 624 cells behind the rotor) after at least 10,800 time steps
+    (6.2 s) at the free-stream velocity. Probably closer to 15,000 steps, since the wake front is slower.
+  * The 6001 time steps bring it to about the middle of the domain. Set `-Parameters.timesteps=...` for longer runs.
+  * The domain is periodic, so the wake re-enters at x = 0 and reaches the turbine again after one flow-through
+    (13,300 steps at the free-stream velocity).
+* **Memory.**
+  * About 68 MB per block on the GPU (single precision), measured with the start of the adaptive case on a GTX 980
+    Ti, plus 29 MB per block of pinned host memory for the CPU mirrors.
+  * A field row of 48 + 4 ghost cells is padded to 64 floats (256 bytes, the pitch alignment of waLBerla's GPU
+    fields). That is 23 % more GPU memory than unpadded. 60 cells in x would avoid it, but y and z would then have
+    to be 75, and the cells per block must be even.
+  * The uniform case is too tight for a 40 GB GPU. Use a larger GPU, or two GPUs with one MPI process each.
+* **Output.** VTK output is off (`writeFrequency 0`); one output of the uniform case would be about 8 GB. Every
+  stability check (every 1200 steps) copies all PDFs to the host, up to 13 GB.
 * **Build.** Set `CMAKE_CUDA_ARCHITECTURES` for the target GPU, for example 80 for A100 or 90 for H100, and use single
   precision (`WALBERLA_DOUBLE_ACCURACY=OFF`).
 * **Status.**
-  * The large static and adaptive cases were run for 3 time steps with the CPU app. The forests and cell counts are as
-    in the table, and the refresh works.
-  * None of the large cases has run on a GPU yet; the GPUs on this machine have 6 GB.
+  * The start of the adaptive case ran for 3 time steps on one GTX 980 Ti (refresh in every step, 31.6 MLUPS).
+  * The static and adaptive cases ran for 3 time steps with the CPU app. The forests and cell counts are as in the
+    table.
+  * Static and uniform don't fit on the 6 GB GPUs of this machine and have not run on a GPU.
 
 ## Differences to the CPU version
 
